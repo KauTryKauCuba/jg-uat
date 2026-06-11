@@ -21,7 +21,10 @@ export default auth((req) => {
       if (userRole === 'ADMIN') {
         return NextResponse.redirect(new URL('/admin', nextUrl))
       }
-      return NextResponse.redirect(new URL('/tester', nextUrl))
+      if (userRole === 'TESTER') {
+        return NextResponse.redirect(new URL('/tester', nextUrl))
+      }
+      // If logged in but no valid role, let them stay on login to re-authenticate
     }
     return NextResponse.next()
   }
