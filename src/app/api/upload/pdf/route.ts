@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import formidable from "formidable"
 import { v4 as uuidv4 } from "uuid"
-import { Readable } from "stream"
+import fs from "fs"
 import path from "path"
 
 export async function POST(req: Request) {
@@ -12,48 +11,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (!req.body) {
-      return NextResponse.json({ error: "No body provided" }, { status: 400 })
+    const formData = await req.formData()
+    const file = formData.get("file") as File | null
+
+    if (!file) {
+      return NextResponse.json({ error: "No PDF file found" }, { status: 400 })
     }
 
-    // Convert Web stream to Node stream for formidable
-    const nodeReq = Readable.fromWeb(req.body as any) as any
-    nodeReq.headers = Object.fromEntries(req.headers.entries())
-    nodeReq.method = req.method
+    if (file.type !== "application/pdf") {
+      return NextResponse.json({ error: "Invalid file type. Only PDF is allowed." }, { status: 400 })
+    }
 
     const uploadDir = path.join(process.cwd(), "public", "uploads", "pdfs")
     
-    const form = formidable({
-      uploadDir,
-      keepExtensions: true,
-      maxFileSize: 20 * 1024 * 1024, // 20MB
-      filter: (part) => part.mimetype === "application/pdf",
-      filename: (name, ext, part) => {
-        const uuid = uuidv4()
-        const sanitized = part.originalFilename?.replace(/[^a-zA-Z0-9.\-]/g, "") || "document.pdf"
-        return `${uuid}-${sanitized}`
-      }
-    })
+    // Ensure directory exists
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true })
+    }
 
-    return new Promise<NextResponse>((resolve) => {
-      form.parse(nodeReq, (err, fields, files) => {
-        if (err) {
-          return resolve(NextResponse.json({ error: "Upload failed: " + err.message }, { status: 500 }))
-        }
-        
-        // Formidable v3 puts files in an array
-        const fileArray = files.file || files.pdf
-        const uploadedFile = Array.isArray(fileArray) ? fileArray[0] : fileArray
-        
-        if (!uploadedFile) {
-          return resolve(NextResponse.json({ error: "No PDF file found or invalid format" }, { status: 400 }))
-        }
+    const uuid = uuidv4()
+    const sanitized = file.name.replace(/[^a-zA-Z0-9.\-]/g, "") || "document.pdf"
+    const fileName = `${uuid}-${sanitized}`
+    const filePath = path.join(uploadDir, fileName)
 
-        resolve(NextResponse.json({ data: { url: `/uploads/pdfs/${uploadedFile.newFilename}` } }))
-      })
-    })
+    // Convert Web File to Node Buffer
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Write file to disk
+    fs.writeFileSync(filePath, buffer)
+
+    return NextResponse.json({ data: { url: `/uploads/pdfs/${fileName}` } })
 
   } catch (error) {
+    console.error("PDF upload error:", error)
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }
 }
