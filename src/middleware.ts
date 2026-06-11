@@ -31,11 +31,11 @@ export default auth((req) => {
   }
 
   if (isAdminRoute && userRole !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/tester', nextUrl))
+    return NextResponse.redirect(new URL(userRole === 'TESTER' ? '/tester' : '/login', nextUrl))
   }
 
   if (isTesterRoute && userRole !== 'TESTER') {
-    return NextResponse.redirect(new URL('/admin', nextUrl))
+    return NextResponse.redirect(new URL(userRole === 'ADMIN' ? '/admin' : '/login', nextUrl))
   }
 
   if (nextUrl.pathname === '/') {
@@ -45,6 +45,7 @@ export default auth((req) => {
     if (userRole === 'TESTER') {
       return NextResponse.redirect(new URL('/tester', nextUrl))
     }
+    return NextResponse.redirect(new URL('/login', nextUrl))
   }
 
   return NextResponse.next()
