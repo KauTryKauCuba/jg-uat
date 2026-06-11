@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# JobGiga UAT Additions
+.env.local
+.env.production
+/public/uploads/**/*
+!/public/uploads/**/.gitkeep
+

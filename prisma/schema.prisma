@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TESTER
+}
+
+enum FieldType {
+  PASS_FAIL
+  TEXT
+  SCREENSHOT
+  DROPDOWN
+  CHECKLIST
+}
+
+enum RunStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      Role      @default(TESTER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  TestRuns  TestRun[]
+}
+
+model TestCase {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  pdfPath     String?     // Path to the uploaded PDF
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  TestFields  TestField[]
+  TestRuns    TestRun[]
+}
+
+model TestField {
+  id          String       @id @default(cuid())
+  testCaseId  String
+  testCase    TestCase     @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  type        FieldType
+  label       String
+  options     String?      // JSON string for DROPDOWN/CHECKLIST options
+  order       Int
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  TestAnswers TestAnswer[]
+}
+
+model TestRun {
+  id          String       @id @default(cuid())
+  testCaseId  String
+  testCase    TestCase     @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  testerId    String
+  tester      User         @relation(fields: [testerId], references: [id], onDelete: Cascade)
+  status      RunStatus    @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  TestAnswers TestAnswer[]
+}
+
+model TestAnswer {
+  id          String    @id @default(cuid())
+  testRunId   String
+  testRun     TestRun   @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  testFieldId String
+  testField   TestField @relation(fields: [testFieldId], references: [id], onDelete: Cascade)
+  value       String?   // JSON string, text, or file path (SCREENSHOT)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([testRunId, testFieldId])
+}

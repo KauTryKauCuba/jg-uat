@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    volumes:
+      - ./public/uploads:/app/public/uploads
+    env_file:
+      - .env.production
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-jobgiga}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jobgiga123}
+      POSTGRES_DB: ${POSTGRES_DB:-jobgiga_uat_dev}
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
